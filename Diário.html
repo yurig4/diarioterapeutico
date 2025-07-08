@@ -1,0 +1,754 @@
+<!DOCTYPE html>
+<html lang="pt">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Diário Terapêutico</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.3/dist/chart.umd.min.js"></script>
+    <!-- jsPDF -->
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js"></script>
+    <style>
+        @import url('https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800;900&display=swap');
+        body { font-family: 'Inter', sans-serif; }
+        .custom-scrollbar::-webkit-scrollbar { height: 8px; width: 8px; }
+        .custom-scrollbar::-webkit-scrollbar-track { background: #2d3748; border-radius: 10px; }
+        .custom-scrollbar::-webkit-scrollbar-thumb { background: #4a5568; border-radius: 10px; }
+        .sticky-left { position: sticky; left: 0; z-index: 10; }
+        .modal-enter { transition: opacity 0.3s ease; }
+    </style>
+</head>
+<body class="min-h-screen bg-gradient-to-br from-gray-900 to-gray-800 text-gray-200 p-4 sm:p-6 font-inter antialiased">
+
+    <!-- Custom Message Box -->
+    <div id="message-box" class="fixed top-4 left-1/2 -translate-x-1/2 px-6 py-3 rounded-full shadow-xl text-white z-[60] transition-all duration-300 transform opacity-0 scale-90 hidden"></div>
+
+    <!-- Questions Customization Modal -->
+    <div id="questions-modal" class="fixed inset-0 bg-black bg-opacity-60 flex items-center justify-center p-4 z-50 hidden modal-enter opacity-0">
+        <div class="bg-gray-800 rounded-2xl shadow-2xl w-full max-w-2xl max-h-[90vh] flex flex-col">
+            <header class="p-5 border-b border-gray-700 flex justify-between items-center">
+                <h2 class="text-2xl font-bold text-emerald-400">Selecionar Perguntas</h2>
+                <button id="close-modal-btn-x" class="text-gray-400 hover:text-gray-200 text-3xl">&times;</button>
+            </header>
+            <main id="modal-questions-list" class="p-6 space-y-4 overflow-y-auto custom-scrollbar">
+                <!-- Question list will be rendered here -->
+            </main>
+            <footer class="p-5 border-t border-gray-700 mt-auto">
+                <div class="flex flex-col sm:flex-row gap-4 mb-4">
+                    <input type="text" id="new-question-input" class="flex-grow p-3 border border-gray-600 rounded-xl bg-gray-700 focus:ring-emerald-500 focus:border-emerald-500" placeholder="Digite um novo item para avaliar...">
+                    <button id="add-question-btn" class="py-3 px-6 rounded-xl font-semibold bg-emerald-600 text-white hover:bg-emerald-700 transition">Adicionar Item</button>
+                </div>
+                <div class="text-right">
+                    <button id="close-modal-btn" class="py-3 px-8 rounded-xl font-semibold bg-gray-600 text-white hover:bg-gray-700 transition">Salvar e Fechar</button>
+                </div>
+            </footer>
+        </div>
+    </div>
+
+    <div class="max-w-7xl mx-auto bg-gray-800 p-6 sm:p-8 rounded-3xl shadow-2xl border border-gray-700 mb-8">
+        <header class="flex flex-col sm:flex-row items-center justify-between border-b pb-4 mb-6 border-gray-700">
+            <div class="flex items-center space-x-3 mb-4 sm:mb-0">
+                <img src="https://placehold.co/80x80/047857/ffffff?text=DT" alt="Santa Gaia Logo" class="rounded-full shadow-lg ring-2 ring-emerald-600"/>
+                <h1 class="text-3xl sm:text-4xl font-extrabold text-emerald-400 leading-tight">DIÁRIO TERAPÊUTICO</h1>
+            </div>
+            <p class="text-sm sm:text-base text-gray-400 mt-2 sm:mt-0 text-center sm:text-right">MATERIAL DE APOIO AO PACIENTE</p>
+        </header>
+
+        <!-- Tab Navigation -->
+        <nav class="mb-8 flex justify-center space-x-2 sm:space-x-4" role="tablist">
+            <button id="diary-tab-btn" role="tab" aria-selected="true" class="py-3 px-6 rounded-full font-semibold transition ease-in-out transform hover:scale-105 bg-emerald-600 text-white shadow-md">Diário</button>
+            <button id="monitoring-tab-btn" role="tab" aria-selected="false" class="py-3 px-6 rounded-full font-semibold transition ease-in-out transform hover:scale-105 bg-gray-700 text-gray-200 hover:bg-gray-600">Monitorização</button>
+            <button id="how-to-use-tab-btn" role="tab" aria-selected="false" class="py-3 px-6 rounded-full font-semibold transition ease-in-out transform hover:scale-105 bg-gray-700 text-gray-200 hover:bg-gray-600">Como Usar</button>
+        </nav>
+
+        <!-- Diary Tab Content -->
+        <div id="diary-tab-content" role="tabpanel" class="tab-content">
+            <!-- Patient Info & Settings -->
+            <div class="p-4 bg-gray-900/50 rounded-xl border border-gray-700 mb-8">
+                <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-5 gap-6 mb-6">
+                    <div class="lg:col-span-1">
+                        <label for="patientName" class="text-base font-medium text-gray-300 mb-2 block">PACIENTE:</label>
+                        <input type="text" id="patientName" class="w-full p-3 border border-gray-600 rounded-xl bg-gray-700 shadow-sm focus:ring-emerald-500 focus:border-emerald-500"/>
+                    </div>
+                     <div class="lg:col-span-2">
+                        <label for="medication" class="text-base font-medium text-gray-300 mb-2 block">MEDICAÇÃO:</label>
+                        <input type="text" id="medication" class="w-full p-3 border border-gray-600 rounded-xl bg-gray-700 shadow-sm focus:ring-emerald-500 focus:border-emerald-500"/>
+                    </div>
+                     <div class="lg:col-span-2">
+                        <label for="dosage" class="text-base font-medium text-gray-300 mb-2 block">DOSAGEM:</label>
+                        <input type="text" id="dosage" class="w-full p-3 border border-gray-600 rounded-xl bg-gray-700 shadow-sm focus:ring-emerald-500 focus:border-emerald-500"/>
+                    </div>
+                    <div>
+                        <label for="startDate" class="text-base font-medium text-gray-300 mb-2 block">DATA DE INÍCIO:</label>
+                        <input type="date" id="startDate" class="w-full p-3 border border-gray-600 rounded-xl bg-gray-700 shadow-sm focus:ring-emerald-500 focus:border-emerald-500" style="color-scheme: dark;"/>
+                    </div>
+                    <div>
+                        <label for="durationInDays" class="text-base font-medium text-gray-300 mb-2 block">DURAÇÃO (DIAS):</label>
+                        <input type="number" id="durationInDays" min="1" max="90" value="15" class="w-full p-3 border border-gray-600 rounded-xl bg-gray-700 shadow-sm focus:ring-emerald-500 focus:border-emerald-500"/>
+                    </div>
+                </div>
+                <div class="flex flex-wrap gap-4 justify-center items-center pt-4 border-t border-gray-700">
+                    <button id="customize-questions-btn" class="py-2 px-5 rounded-full font-semibold bg-indigo-600 text-white shadow-md hover:bg-indigo-700 transition">Selecionar Perguntas</button>
+                    <button id="import-json-btn" class="py-2 px-5 rounded-full font-semibold bg-gray-600 text-white shadow-md hover:bg-gray-700 transition">Importar Dados</button>
+                    <button id="clear-data-btn" class="py-2 px-5 rounded-full font-semibold bg-red-600 text-white shadow-md hover:bg-red-700 transition">Limpar Todos os Dados</button>
+                    <input type="file" id="import-file-input" class="hidden" accept=".json">
+                </div>
+            </div>
+
+            <div id="today-evaluation-container" class="mb-10"></div>
+            <div id="review-evaluation-container" class="mb-10"></div>
+        </div>
+
+        <!-- Monitoring Tab Content -->
+        <div id="monitoring-tab-content" role="tabpanel" class="tab-content hidden"></div>
+        
+        <!-- How to Use Tab Content -->
+        <div id="how-to-use-tab-content" role="tabpanel" class="tab-content hidden">
+            <div class="space-y-8 text-gray-300">
+                <h2 class="text-2xl font-bold text-gray-200 mb-6 border-b-2 pb-3 border-emerald-700 text-center">Como Utilizar o Diário Terapêutico</h2>
+
+                <div class="p-6 bg-gray-900/50 rounded-xl border border-gray-700">
+                    <h3 class="text-xl font-bold text-emerald-400 mb-3">1. Preenchimento Inicial</h3>
+                    <p class="leading-relaxed">No topo da aba "Diário", preencha os seus dados básicos: Nome, Medicação, Dosagem, Data de Início e a Duração (em dias) do seu acompanhamento. Estes dados são importantes para identificar e contextualizar o seu relatório.</p>
+                </div>
+
+                <div class="p-6 bg-gray-900/50 rounded-xl border border-gray-700">
+                    <h3 class="text-xl font-bold text-emerald-400 mb-3">2. Como Responder</h3>
+                    <p class="leading-relaxed mb-4">Para cada item, a sua resposta deve ser uma comparação com o seu estado <strong>antes de iniciar o tratamento</strong>. Este é o seu parâmetro inicial de referência.</p>
+                    <div class="grid grid-cols-1 md:grid-cols-2 gap-6">
+                        <div>
+                            <h4 class="font-semibold text-gray-200 mb-2">Instruções de Uso:</h4>
+                            <ul class="list-disc list-inside space-y-1 text-gray-400">
+                                <li>Melhorou Muito</li>
+                                <li>Melhorou</li>
+                                <li>Não mudou</li>
+                                <li>Piorou</li>
+                                <li>Piorou Muito</li>
+                            </ul>
+                        </div>
+                        <div>
+                            <h4 class="font-semibold text-gray-200 mb-2">Dicas para Preencher:</h4>
+                             <ul class="list-disc list-inside space-y-1 text-gray-400">
+                                <li>Escolha a opção que melhor reflete a sua perceção.</li>
+                                <li>Preencher diariamente ajuda a identificar padrões.</li>
+                                <li>Se tiver dúvidas, consulte a equipa de acolhimento.</li>
+                            </ul>
+                        </div>
+                    </div>
+                </div>
+
+                <div class="p-6 bg-gray-900/50 rounded-xl border border-gray-700">
+                    <h3 class="text-xl font-bold text-emerald-400 mb-3">3. Avaliação Diária</h3>
+                    <p class="leading-relaxed">Todos os dias, na secção "Avaliação de Hoje", responda a cada pergunta e registe também qualquer efeito adverso que tenha sentido.</p>
+                </div>
+                
+                <div class="p-6 bg-gray-900/50 rounded-xl border border-gray-700">
+                    <h3 class="text-xl font-bold text-emerald-400 mb-3">4. Salvar os Dados (Backup)</h3>
+                    <p class="leading-relaxed">Após preencher a sua avaliação diária, clique no botão <span class="font-semibold text-blue-400">SALVAR DADOS</span>. Isto irá descarregar um ficheiro `.json` para o seu computador. Guarde este ficheiro num local seguro, pois ele é um backup de todo o seu progresso.</p>
+                </div>
+
+                <div class="p-6 bg-gray-900/50 rounded-xl border border-gray-700">
+                    <h3 class="text-xl font-bold text-emerald-400 mb-3">5. Rever ou Editar</h3>
+                    <p class="leading-relaxed">Se se esqueceu de preencher um dia ou quer corrigir uma resposta, utilize a secção "Revisar ou Editar Dias Anteriores". Basta selecionar o dia desejado na lista para carregar e modificar as suas respostas.</p>
+                </div>
+
+                <div class="p-6 bg-gray-900/50 rounded-xl border border-gray-700">
+                    <h3 class="text-xl font-bold text-emerald-400 mb-3">6. Monitorização e Relatórios</h3>
+                    <p class="leading-relaxed">Na aba "Monitorização", pode visualizar a sua evolução através de uma tabela resumo e de gráficos detalhados. Para gerar um relatório profissional, clique em <span class="font-semibold text-emerald-500">Exportar Relatório para PDF</span>.</p>
+                </div>
+
+                 <div class="p-6 bg-gray-900/50 rounded-xl border border-gray-700">
+                    <h3 class="text-xl font-bold text-emerald-400 mb-3">7. Gestão de Dados e Perguntas</h3>
+                    <ul class="list-disc list-inside space-y-2">
+                        <li><span class="font-semibold text-indigo-400">Selecionar Perguntas:</span> Personalize o diário ativando, desativando ou criando os seus próprios itens de avaliação.</li>
+                        <li><span class="font-semibold text-gray-400">Importar Dados:</span> Se trocar de dispositivo ou limpar os dados do navegador, use esta opção para carregar o seu ficheiro `.json` de backup e restaurar todo o seu progresso.</li>
+                        <li><span class="font-semibold text-red-400">Limpar Todos os Dados:</span> Apaga permanentemente todas as informações do diário. Use com cuidado!</li>
+                    </ul>
+                </div>
+                
+                <div class="p-6 bg-gray-900/50 rounded-xl border border-yellow-500/50">
+                    <h3 class="text-xl font-bold text-yellow-400 mb-3">8. Privacidade e Segurança dos Seus Dados</h3>
+                    <p class="leading-relaxed mb-2"><strong>Os seus dados são privados.</strong> Toda a informação que insere neste diário é guardada <span class="font-semibold">exclusivamente no seu dispositivo</span>, dentro do seu navegador.</p>
+                    <p class="leading-relaxed mb-2"><strong>Nenhuma informação é enviada para a internet</strong> ou para qualquer servidor externo. Isto significa que só quem tem acesso físico ao seu computador ou telemóvel pode ver os seus dados.</p>
+                    <p class="leading-relaxed">Lembre-se que a segurança dos seus dados depende da segurança do seu dispositivo e dos ficheiros de backup que exporta.</p>
+                </div>
+            </div>
+        </div>
+
+        <footer class="text-center py-6 border-t-2 border-gray-700 mt-8">
+            <p class="text-lg text-gray-300 font-semibold mb-3">PARA SUPORTE E ACOLHIMENTO:</p>
+            <p class="text-3xl font-extrabold text-emerald-400 tracking-wide">Procure seu médico </p>
+        </footer>
+    </div>
+
+    <script>
+    // --- CONFIG & DEFAULTS ---
+    const scoreMapping = { "Melhorou Muito": 2, "Melhorou": 1, "Não mudou": 0, "Piorou": -1, "Piorou Muito": -2, "": NaN };
+    const reverseScoreMapping = { 2: "Melhorou M.", 1: "Melhorou", 0: "Não mudou", "-1": "Piorou", "-2": "Piorou M.", '': '' };
+    const scoreOptions = [ { value: "", label: "Selecione" }, { value: "Melhorou Muito", label: "Melhorou Muito" }, { value: "Melhorou", label: "Melhorou" }, { value: "Não mudou", label: "Não mudou" }, { value: "Piorou", label: "Piorou" }, { value: "Piorou Muito", label: "Piorou Muito" } ];
+    const feedbackColors = { "Melhorou Muito": "bg-green-800", "Melhorou": "bg-lime-800", "Não mudou": "bg-yellow-800", "Piorou": "bg-orange-800", "Piorou Muito": "bg-red-800", "": "bg-gray-700" };
+    const defaultEvaluationItems = [ "Humor", "Ansiedade", "Qualidade do Sono", "Energia / Disposição", "Dores", "Função Intestinal", "Apetite", "Concentração / Foco", "Interação Social", "Facilidade de Expressão", "Mobilidade / Movimento", "Tremores", "Crises", "Enjoo / Vômito", "Clareza Mental", "Necessidade de Uso (Compulsão)" ];
+
+    // --- GLOBAL STATE & CHART INSTANCES ---
+    let appState = {};
+    const chartInstances = {};
+
+    // --- INITIALIZATION ---
+    function initializeState(duration = 15) {
+        const questions = defaultEvaluationItems.map(text => ({ text, isActive: true, isCustom: false }));
+        const createDayObject = () => Array.from({ length: duration }, (_, i) => i + 1).reduce((acc, day) => ({ ...acc, [`day${day}`]: '' }), {});
+        appState = {
+            patientName: '', medication: '', dosage: '', startDate: '',
+            durationInDays: duration,
+            questions: questions,
+            evaluations: questions.map(q => ({ item: q.text, scores: createDayObject() })),
+            adverseEffects: createDayObject()
+        };
+    }
+
+    // --- UTILITY FUNCTIONS ---
+    function showMessage(text, type = 'success', duration = 3000) {
+        const msgBox = document.getElementById('message-box');
+        msgBox.textContent = text;
+        msgBox.className = 'fixed top-4 left-1/2 -translate-x-1/2 px-6 py-3 rounded-full shadow-xl text-white z-[60] transition-all duration-300 transform';
+        if (type === 'success') msgBox.classList.add('bg-green-600');
+        else if (type === 'error') msgBox.classList.add('bg-red-600');
+        else if (type === 'info') msgBox.classList.add('bg-blue-600');
+        msgBox.classList.remove('hidden', 'opacity-0', 'scale-90');
+        setTimeout(() => { msgBox.classList.remove('opacity-0', 'scale-90'); }, 10);
+        setTimeout(() => {
+            msgBox.classList.add('opacity-0', 'scale-90');
+            setTimeout(() => msgBox.classList.add('hidden'), 300);
+        }, duration);
+    }
+    
+    function calculateDayOfTreatment() {
+        if (!appState.startDate) return 0;
+        const start = new Date(appState.startDate + 'T00:00:00');
+        const today = new Date();
+        today.setHours(0, 0, 0, 0);
+        const diffTime = today.getTime() - start.getTime();
+        return diffTime < 0 ? 0 : Math.min(Math.floor(diffTime / (1000 * 60 * 60 * 24)) + 1, appState.durationInDays);
+    }
+
+    // --- DATA PERSISTENCE & MANAGEMENT ---
+    function loadData() {
+        try {
+            const storedData = localStorage.getItem('therapyDiaryData');
+            if (storedData) {
+                const parsedData = JSON.parse(storedData);
+                if (!parsedData.questions || !parsedData.evaluations) {
+                   throw new Error("Formato de dados antigo ou inválido.");
+                }
+                if (typeof parsedData.adverseEffects === 'string' || !parsedData.adverseEffects) {
+                    const oldEffects = parsedData.adverseEffects;
+                    const createDayObject = () => Array.from({ length: parsedData.durationInDays }, (_, i) => i + 1).reduce((acc, day) => ({ ...acc, [`day${day}`]: '' }), {});
+                    parsedData.adverseEffects = createDayObject();
+                    if(oldEffects) parsedData.adverseEffects.day1 = oldEffects;
+                }
+                appState = parsedData;
+                showMessage('Dados carregados com sucesso!', 'success');
+            } else {
+                initializeState();
+                showMessage('Diário inicializado. Bem-vindo!', 'info');
+            }
+        } catch (e) {
+            console.error("Erro ao carregar dados:", e);
+            showMessage('Erro ao carregar dados. Iniciando um novo diário.', 'error');
+            initializeState();
+        }
+    }
+
+    function saveData() {
+        try {
+            localStorage.setItem('therapyDiaryData', JSON.stringify(appState));
+        } catch (e) {
+            console.error("Erro ao guardar dados:", e);
+            showMessage('Erro ao guardar dados.', 'error');
+        }
+    }
+    
+    function clearAllData() {
+        if (confirm('ATENÇÃO: Isto apagará PERMANENTEMENTE todos os dados. Deseja continuar?')) {
+            initializeState(appState.durationInDays);
+            saveData();
+            renderAll();
+            showMessage('Todos os dados foram limpos.', 'success');
+        } else {
+            showMessage('Limpeza de dados cancelada.', 'info');
+        }
+    }
+
+    function exportDataAsJson() {
+        const patientName = (appState.patientName || 'paciente').replace(/ /g, '_');
+        const startDate = appState.startDate || new Date().toISOString().slice(0, 10);
+        const filename = `${patientName}_${startDate}.json`;
+        
+        const dataStr = JSON.stringify(appState, null, 2);
+        const dataBlob = new Blob([dataStr], {type: "application/json"});
+        const url = URL.createObjectURL(dataBlob);
+        const link = document.createElement('a');
+        link.href = url;
+        link.download = filename;
+        link.click();
+        URL.revokeObjectURL(url);
+        showMessage('Dados salvos com sucesso!', 'success');
+    }
+    
+    function importDataFromJson(event) {
+        const file = event.target.files[0];
+        if (!file) return;
+        if (!confirm('Isto irá substituir todos os dados atuais. Deseja continuar?')) {
+            event.target.value = null;
+            return;
+        }
+        
+        const reader = new FileReader();
+        reader.onload = e => {
+            try {
+                const importedData = JSON.parse(e.target.result);
+                if (importedData.questions && importedData.evaluations) {
+                    appState = importedData;
+                    saveData();
+                    renderAll();
+                    showMessage('Dados importados com sucesso!', 'success');
+                } else { throw new Error("Formato de arquivo inválido."); }
+            } catch (err) {
+                showMessage(`Erro ao importar: ${err.message}`, 'error');
+            } finally {
+                event.target.value = null;
+            }
+        };
+        reader.readAsText(file);
+    }
+    
+    // --- UI RENDERING ---
+    function renderAll() {
+        renderDiaryTab();
+    }
+
+    function renderDiaryTab() {
+        document.getElementById('patientName').value = appState.patientName || '';
+        document.getElementById('medication').value = appState.medication || '';
+        document.getElementById('dosage').value = appState.dosage || '';
+        document.getElementById('startDate').value = appState.startDate ? new Date(appState.startDate + 'T00:00:00').toISOString().split('T')[0] : '';
+        document.getElementById('durationInDays').value = appState.durationInDays;
+        
+        renderTodayEvaluationForm();
+        renderReviewSection();
+    }
+
+    function createEvaluationFormHTML(dayNumber, questions) {
+        if (dayNumber <= 0 || dayNumber > appState.durationInDays) {
+            return `<p class="text-center text-gray-400">A data de início não foi definida ou o tratamento ainda não começou.</p>`;
+        }
+
+        let questionsHtml = '';
+        if (questions.length === 0) {
+             questionsHtml = `<div class="text-center p-4 border-dashed border-2 border-gray-600 rounded-lg">
+                <p class="text-gray-400">Nenhum item de avaliação ativo.</p>
+                <button id="customize-shortcut-btn" class="mt-4 py-2 px-4 rounded-full font-semibold bg-indigo-600 text-white hover:bg-indigo-700">Selecionar Perguntas</button>
+            </div>`;
+        } else {
+             questionsHtml = questions.map(q => {
+                const evalItem = appState.evaluations.find(e => e.item === q.text);
+                const score = evalItem?.scores?.[`day${dayNumber}`] || '';
+                const colorClass = feedbackColors[score] || feedbackColors[""];
+                return `<div class="flex flex-col">
+                    <label class="text-base font-medium text-gray-300 mb-2">${q.text}</label>
+                    <select class="w-full p-3 border rounded-xl shadow-sm ${colorClass} focus:ring-emerald-500 focus:border-emerald-500" data-question-text="${q.text}" data-day-number="${dayNumber}">
+                        ${scoreOptions.map(opt => `<option value="${opt.value}" ${opt.value === score ? 'selected' : ''}>${opt.label}</option>`).join('')}
+                    </select>
+                </div>`;
+            }).join('');
+        }
+        
+        const adverseEffectsHtml = `
+            <div class="mt-8 pt-6 border-t border-gray-600">
+                <label for="adverse-effects-day-${dayNumber}" class="text-base font-medium text-gray-300 mb-2">Efeitos Adversos (relato do dia):</label>
+                <textarea id="adverse-effects-day-${dayNumber}" data-adverse-day="${dayNumber}" class="w-full p-3 border border-gray-600 rounded-xl bg-gray-700 focus:ring-emerald-500 focus:border-emerald-500 shadow-sm" rows="4" placeholder="Descreva aqui...">${appState.adverseEffects?.[`day${dayNumber}`] || ''}</textarea>
+            </div>`;
+
+        return `<div class="space-y-4">${questionsHtml}</div>${adverseEffectsHtml}`;
+    }
+
+    function renderTodayEvaluationForm() {
+        const container = document.getElementById('today-evaluation-container');
+        const dayOfTreatment = calculateDayOfTreatment();
+        const activeQuestions = appState.questions.filter(q => q.isActive);
+        const todayFormatted = new Date().toLocaleDateString('pt-BR');
+        let title = `Avaliação de Hoje - ${todayFormatted} (Dia ${dayOfTreatment} do tratamento)`;
+        if(dayOfTreatment <= 0) title = `Como está a sentir-se hoje? (${todayFormatted})`;
+        
+        container.innerHTML = `
+            <h2 class="text-2xl font-bold text-gray-200 mb-6 border-b-2 pb-3 border-emerald-700 text-center">${title}</h2>
+            <div id="today-form-wrapper">
+                ${createEvaluationFormHTML(dayOfTreatment, activeQuestions)}
+            </div>
+            <div class="text-center mt-8">
+                <button id="save-data-btn" class="py-3 px-8 rounded-full font-semibold bg-blue-600 text-white shadow-lg hover:bg-blue-700 transition transform hover:scale-105">SALVAR DADOS</button>
+            </div>`;
+    }
+
+    function renderReviewSection() {
+        const container = document.getElementById('review-evaluation-container');
+        container.innerHTML = `<h2 class="text-2xl font-bold text-gray-200 mb-6 border-b-2 pb-3 border-emerald-700 text-center">Revisar ou Editar Dias Anteriores</h2>
+            <div class="flex flex-col items-center">
+                <label for="day-selector" class="text-base font-medium text-gray-300 mb-2">Selecione o dia:</label>
+                <select id="day-selector" class="p-3 w-full max-w-xs border border-gray-600 rounded-xl bg-gray-700 focus:ring-emerald-500 focus:border-emerald-500 shadow-sm"></select>
+            </div>
+            <div id="review-form-container" class="mt-6"></div>`;
+        
+        const selector = document.getElementById('day-selector');
+        selector.innerHTML = '<option value="">Selecione um dia...</option>' + 
+            Array.from({ length: appState.durationInDays }, (_, i) => `<option value="${i + 1}">Dia ${i + 1}</option>`).join('');
+    }
+
+    function renderMonitoringData() {
+        const container = document.getElementById('monitoring-tab-content');
+        const activeEvals = appState.evaluations.filter(e => appState.questions.find(q => q.text === e.item && q.isActive));
+        const hasData = activeEvals.some(e => Object.values(e.scores).some(s => s));
+
+        container.innerHTML = `<div class="space-y-8">
+            <h2 class="text-2xl font-bold text-gray-200 mb-6 border-b-2 pb-3 border-emerald-700 text-center">Monitorização da Avaliação</h2>
+            <div id="summary-table-container" class="mb-12 ${!hasData ? 'hidden' : ''}"></div>
+            <div id="charts-container-wrapper" class="${!hasData ? 'hidden' : ''}"></div>
+            <p id="no-data-message" class="text-center text-gray-400 mt-4 ${hasData ? 'hidden' : ''}">Preencha as avaliações para ver os dados.</p>
+            <div class="text-center mt-8 ${!hasData ? 'hidden' : ''}"><button id="export-pdf-btn" class="py-3 px-8 rounded-full font-semibold bg-emerald-600 text-white shadow-lg hover:bg-emerald-700 transition transform hover:scale-105">Exportar Relatório para PDF</button></div>
+            </div>`;
+        
+        if (hasData) {
+            renderSummaryTable(activeEvals);
+            renderCharts(activeEvals);
+        }
+    }
+    
+    function renderSummaryTable(evaluations) {
+        const container = document.getElementById('summary-table-container');
+        const headerDays = Array.from({ length: appState.durationInDays }, (_, i) => `<th class="p-2 border border-gray-600">Dia ${i + 1}</th>`).join('');
+        const bodyRows = evaluations.map(item => {
+            const cells = Array.from({ length: appState.durationInDays }, (_, i) => `<td class="p-2 border border-gray-600 text-center text-sm whitespace-nowrap">${item.scores?.[`day${i + 1}`] || '-'}</td>`).join('');
+            return `<tr><td class="sticky-left p-2 border border-gray-600 font-semibold bg-gray-700/50 whitespace-nowrap">${item.item}</td>${cells}</tr>`;
+        }).join('');
+        container.innerHTML = `<h3 class="text-xl font-semibold text-emerald-400 mb-4 text-center">Tabela Resumo</h3>
+            <div class="overflow-x-auto custom-scrollbar border border-gray-700 rounded-lg"><table class="w-full border-collapse">
+            <thead class="bg-gray-700"><tr><th class="sticky-left p-2 border border-gray-600 bg-gray-700">Avaliação</th>${headerDays}</tr></thead>
+            <tbody class="bg-gray-800">${bodyRows}</tbody></table></div>`;
+    }
+
+    function renderCharts(evaluations) {
+        Object.values(chartInstances).forEach(chart => chart.destroy());
+        const container = document.getElementById('charts-container-wrapper');
+        container.innerHTML = `<h3 class="text-xl font-semibold text-emerald-400 mb-4 text-center">Gráficos de Evolução</h3><div id="charts-container" class="grid grid-cols-1 lg:grid-cols-2 gap-8"></div>`;
+        const chartGrid = document.getElementById('charts-container');
+
+        evaluations.forEach((item, index) => {
+            const dataPoints = Array.from({ length: appState.durationInDays }, (_, i) => scoreMapping[item.scores?.[`day${i + 1}`]]);
+            if (dataPoints.some(dp => !isNaN(dp))) {
+                const chartWrapper = document.createElement('div');
+                chartWrapper.className = 'bg-gray-900/50 p-4 rounded-xl shadow-lg border border-gray-700';
+                chartWrapper.innerHTML = `<h4 class="text-lg font-semibold text-emerald-400 mb-3 text-center">${item.item}</h4><canvas></canvas>`;
+                chartGrid.appendChild(chartWrapper);
+                const canvas = chartWrapper.querySelector('canvas');
+                chartInstances[`chart-${index}`] = new Chart(canvas, {
+                    type: 'line',
+                    data: { labels: Array.from({ length: appState.durationInDays }, (_, i) => `Dia ${i + 1}`), datasets: [{ data: dataPoints, borderColor: 'rgb(16, 185, 129)', backgroundColor: 'rgba(16, 185, 129, 0.2)', tension: 0.1, fill: true, spanGaps: true }] },
+                    options: { responsive: true, plugins: { legend: { display: false } }, scales: { y: { min: -2, max: 2, ticks: { stepSize: 1, callback: v => reverseScoreMapping[v], color: '#9ca3af' } }, x: { ticks: { color: '#9ca3af' } } } }
+                });
+            }
+        });
+    }
+
+    // --- MODAL LOGIC ---
+    function openQuestionsModal() { 
+        document.getElementById('questions-modal').classList.remove('hidden');
+        setTimeout(() => document.getElementById('questions-modal').classList.remove('opacity-0'), 10);
+        renderQuestionsInModal(); 
+    }
+    function closeQuestionsModal() { 
+        const modal = document.getElementById('questions-modal');
+        modal.classList.add('opacity-0');
+        setTimeout(() => modal.classList.add('hidden'), 300);
+    }
+    
+    function renderQuestionsInModal() {
+        const listContainer = document.getElementById('modal-questions-list');
+        listContainer.innerHTML = appState.questions.map(q => `
+            <div class="flex items-center justify-between p-3 rounded-lg bg-gray-700/50 hover:bg-gray-700">
+                <div class="flex items-center flex-grow">
+                    <input type="checkbox" ${q.isActive ? 'checked' : ''} data-question-text="${q.text}" class="h-5 w-5 rounded border-gray-300 text-emerald-600 focus:ring-emerald-500 cursor-pointer">
+                    <label class="ml-3 text-gray-200 cursor-pointer flex-1">${q.text}</label>
+                </div>
+                ${q.isCustom ? `<button data-question-text="${q.text}" class="delete-question-btn text-red-500 hover:text-red-700 font-bold text-2xl leading-none px-2">&times;</button>` : ''}
+            </div>`).join('');
+    }
+
+    function addCustomQuestion() {
+        const input = document.getElementById('new-question-input');
+        const text = input.value.trim();
+        if (!text) return showMessage('O item não pode estar vazio.', 'error');
+        if (appState.questions.some(q => q.text.toLowerCase() === text.toLowerCase())) return showMessage('Este item já existe.', 'error');
+
+        appState.questions.push({ text, isActive: true, isCustom: true });
+        appState.evaluations.push({
+            item: text,
+            scores: Array.from({ length: appState.durationInDays }, (_, i) => i + 1).reduce((acc, day) => ({...acc, [`day${day}`]: ''}), {})
+        });
+        
+        input.value = '';
+        renderQuestionsInModal();
+        showMessage('Item adicionado!', 'success');
+    }
+
+    function deleteCustomQuestion(text) {
+        if (confirm(`Tem certeza que deseja apagar o item: "${text}"?`)) {
+            appState.questions = appState.questions.filter(q => q.text !== text);
+            appState.evaluations = appState.evaluations.filter(e => e.item !== text);
+            renderQuestionsInModal();
+            showMessage('Item apagado.', 'success');
+        }
+    }
+
+    function saveQuestionCustomization() {
+        document.querySelectorAll('#modal-questions-list input[type="checkbox"]').forEach(chk => {
+            const question = appState.questions.find(q => q.text === chk.dataset.questionText);
+            if (question) question.isActive = chk.checked;
+        });
+        saveData();
+        renderAll();
+        closeQuestionsModal();
+        showMessage('Personalização guardada!', 'success');
+    }
+    
+    // --- PDF EXPORT ---
+    async function exportMonitoringToPdf() {
+        const { jsPDF } = window.jspdf;
+        const doc = new jsPDF({ orientation: 'p', unit: 'mm', format: 'a4' });
+        
+        let yOffset = 10;
+        const pageHeight = doc.internal.pageSize.height;
+        const margin = 15;
+        let page = 1;
+
+        const drawHeader = () => {
+            doc.setFont('helvetica', 'bold');
+            doc.setFontSize(18);
+            doc.text('Relatório de Acompanhamento Terapêutico', doc.internal.pageSize.width / 2, yOffset, { align: 'center' });
+            yOffset += 10;
+            doc.setDrawColor(100, 100, 100);
+            doc.line(margin, yOffset, doc.internal.pageSize.width - margin, yOffset);
+            yOffset += 2;
+        };
+
+        const drawFooter = () => {
+            const footerY = pageHeight - 10;
+            doc.setDrawColor(100, 100, 100);
+            doc.line(margin, footerY - 2, doc.internal.pageSize.width - margin, footerY - 2);
+            doc.setFont('helvetica', 'normal');
+            doc.setFontSize(8);
+            doc.text(`Página ${page}`, doc.internal.pageSize.width / 2, footerY, { align: 'center' });
+            const generationDate = `Gerado em: ${new Date().toLocaleDateString('pt-BR')} ${new Date().toLocaleTimeString('pt-BR')}`;
+            doc.text(generationDate, margin, footerY);
+        };
+        
+        const checkNewPage = (requiredHeight) => {
+            if (yOffset + requiredHeight > pageHeight - 20) {
+                drawFooter();
+                doc.addPage();
+                page++;
+                yOffset = 10;
+                drawHeader();
+                drawFooter();
+                yOffset += 5;
+                return true;
+            }
+            return false;
+        };
+        
+        drawHeader();
+        drawFooter();
+        yOffset += 10;
+
+        // Section 1: Patient Info
+        doc.setFont('helvetica', 'bold');
+        doc.setFontSize(14);
+        doc.text('1. DADOS DO PACIENTE E TRATAMENTO', margin, yOffset);
+        yOffset += 8;
+
+        doc.setFont('helvetica', 'bold');
+        doc.setFontSize(10);
+        doc.text('Paciente:', margin + 2, yOffset);
+        doc.setFont('helvetica', 'normal');
+        doc.text(appState.patientName || 'Não especificado', margin + 25, yOffset);
+        yOffset += 6;
+
+        doc.setFont('helvetica', 'bold');
+        doc.text('Medicação:', margin + 2, yOffset);
+        doc.setFont('helvetica', 'normal');
+        doc.text(appState.medication || 'Não especificada', margin + 25, yOffset);
+        yOffset += 6;
+        
+        doc.setFont('helvetica', 'bold');
+        doc.text('Dosagem:', margin + 2, yOffset);
+        doc.setFont('helvetica', 'normal');
+        doc.text(appState.dosage || 'Não especificada', margin + 25, yOffset);
+        yOffset += 6;
+        
+        const startDate = appState.startDate ? new Date(appState.startDate + 'T00:00:00').toLocaleDateString('pt-BR') : 'Não especificada';
+        doc.setFont('helvetica', 'bold');
+        doc.text('Início do Tratamento:', margin + 2, yOffset);
+        doc.setFont('helvetica', 'normal');
+        doc.text(startDate, margin + 40, yOffset);
+        yOffset += 12;
+
+        const activeEvals = appState.evaluations.filter(e => appState.questions.find(q => q.text === e.item && q.isActive));
+        const hasData = activeEvals.some(e => Object.values(e.scores).some(s => s));
+
+        if (!hasData) {
+            checkNewPage(10);
+            doc.text('Nenhum dado de avaliação foi preenchido.', margin, yOffset);
+        } else {
+            // Section 2: Charts
+            checkNewPage(20);
+            doc.setFont('helvetica', 'bold');
+            doc.setFontSize(14);
+            doc.text('2. ANÁLISE GRÁFICA DOS SINTOMAS', margin, yOffset);
+            yOffset += 8;
+            
+            const chartElements = document.querySelectorAll('#charts-container canvas');
+            for (const canvas of chartElements) {
+                const chartWrapper = canvas.closest('div');
+                const title = chartWrapper.querySelector('h4').textContent;
+                const imgData = canvas.toDataURL('image/png', 1.0);
+                const imgWidth = doc.internal.pageSize.width - (margin * 2);
+                const imgHeight = (canvas.height * imgWidth) / canvas.width;
+
+                checkNewPage(imgHeight + 15);
+
+                doc.setFont('helvetica', 'bold');
+                doc.setFontSize(11);
+                doc.text(title, margin, yOffset);
+                yOffset += 4;
+                doc.addImage(imgData, 'PNG', margin, yOffset, imgWidth, imgHeight);
+                yOffset += imgHeight + 8;
+            }
+        }
+        
+        // Section 3: Adverse Effects
+        let adverseText = '';
+        Object.keys(appState.adverseEffects).sort((a,b) => parseInt(a.slice(3)) - parseInt(b.slice(3))).forEach(dayKey => {
+            if(appState.adverseEffects[dayKey]?.trim()) {
+                const dayNum = dayKey.replace('day', '');
+                adverseText += `Dia ${dayNum}: ${appState.adverseEffects[dayKey]}\n\n`;
+            }
+        });
+
+        if (adverseText) {
+            checkNewPage(40);
+            doc.setFont('helvetica', 'bold');
+            doc.setFontSize(14);
+            doc.text('3. RELATO DE EFEITOS ADVERSOS', margin, yOffset);
+            yOffset += 8;
+
+            doc.setFont('helvetica', 'normal');
+            doc.setFontSize(10);
+            const splitText = doc.splitTextToSize(adverseText, doc.internal.pageSize.width - (margin * 2));
+            checkNewPage(splitText.length * 5);
+            doc.text(splitText, margin, yOffset);
+        }
+        
+        const filename = `Relatorio_${(appState.patientName || 'Paciente').replace(/ /g, '_')}_${new Date().toISOString().slice(0,10)}.pdf`;
+        doc.save(filename);
+        showMessage('PDF gerado com sucesso!', 'success');
+    }
+
+    // --- EVENT HANDLERS ---
+    document.addEventListener('DOMContentLoaded', () => {
+        loadData();
+        renderAll();
+
+        document.getElementById('patientName').addEventListener('input', e => { appState.patientName = e.target.value; saveData(); });
+        document.getElementById('medication').addEventListener('input', e => { appState.medication = e.target.value; saveData(); });
+        document.getElementById('dosage').addEventListener('input', e => { appState.dosage = e.target.value; saveData(); });
+        document.getElementById('startDate').addEventListener('input', e => { appState.startDate = e.target.value; saveData(); renderAll(); });
+        
+        document.getElementById('durationInDays').addEventListener('input', e => {
+            const newDuration = Math.max(1, Math.min(90, parseInt(e.target.value, 10) || 1));
+            const oldDuration = appState.durationInDays;
+            appState.durationInDays = newDuration;
+            e.target.value = newDuration;
+            const createDayObject = (source) => {
+                const newScores = {};
+                for (let i = 1; i <= newDuration; i++) {
+                    newScores[`day${i}`] = (i <= oldDuration) ? (source[`day${i}`] || '') : '';
+                }
+                return newScores;
+            };
+            appState.evaluations.forEach(evalItem => { evalItem.scores = createDayObject(evalItem.scores); });
+            appState.adverseEffects = createDayObject(appState.adverseEffects);
+            saveData();
+            renderAll();
+        });
+        
+        document.body.addEventListener('input', e => {
+            if (e.target.dataset.adverseDay) {
+                appState.adverseEffects[`day${e.target.dataset.adverseDay}`] = e.target.value;
+                saveData();
+            }
+        });
+
+        document.getElementById('diary-tab-btn').addEventListener('click', () => switchTab('diary-tab-btn'));
+        document.getElementById('monitoring-tab-btn').addEventListener('click', () => switchTab('monitoring-tab-btn'));
+        document.getElementById('how-to-use-tab-btn').addEventListener('click', () => switchTab('how-to-use-tab-btn'));
+
+        document.getElementById('diary-tab-content').addEventListener('change', e => {
+            if (e.target.tagName === 'SELECT' && e.target.dataset.questionText) {
+                const evalItem = appState.evaluations.find(ev => ev.item === e.target.dataset.questionText);
+                if(evalItem) {
+                    evalItem.scores[`day${e.target.dataset.dayNumber}`] = e.target.value;
+                    e.target.className = `w-full p-3 border rounded-xl shadow-sm ${feedbackColors[e.target.value] || ""} focus:ring-emerald-500 focus:border-emerald-500`;
+                    saveData();
+                }
+            } else if (e.target.id === 'day-selector') {
+                const day = parseInt(e.target.value);
+                document.getElementById('review-form-container').innerHTML = day ? createEvaluationFormHTML(day, appState.questions.filter(q => q.isActive)) : '';
+            }
+        });
+
+        document.getElementById('customize-questions-btn').addEventListener('click', openQuestionsModal);
+        document.getElementById('import-json-btn').addEventListener('click', () => document.getElementById('import-file-input').click());
+        document.getElementById('import-file-input').addEventListener('change', importDataFromJson);
+        document.getElementById('clear-data-btn').addEventListener('click', clearAllData);
+        document.body.addEventListener('click', e => {
+             if (e.target.id === 'customize-shortcut-btn') openQuestionsModal();
+             if (e.target.id === 'save-data-btn') exportDataAsJson();
+             if (e.target.closest('#export-pdf-btn')) exportMonitoringToPdf();
+        });
+
+        document.getElementById('close-modal-btn').addEventListener('click', saveQuestionCustomization);
+        document.getElementById('close-modal-btn-x').addEventListener('click', closeQuestionsModal);
+        document.getElementById('add-question-btn').addEventListener('click', addCustomQuestion);
+        document.getElementById('new-question-input').addEventListener('keypress', e => { if (e.key === 'Enter') addCustomQuestion(); });
+        document.getElementById('modal-questions-list').addEventListener('click', e => {
+            if (e.target.classList.contains('delete-question-btn')) deleteCustomQuestion(e.target.dataset.questionText);
+        });
+    });
+    
+    function switchTab(activeTabId) {
+        document.querySelectorAll('[role="tab"]').forEach(tab => {
+            const isSelected = tab.id === activeTabId;
+            const panel = document.getElementById(tab.id.replace('-btn', '-content'));
+            tab.setAttribute('aria-selected', isSelected);
+            tab.classList.toggle('bg-emerald-600', isSelected);
+            tab.classList.toggle('text-white', isSelected);
+            tab.classList.toggle('shadow-md', isSelected);
+            tab.classList.toggle('bg-gray-700', !isSelected);
+            tab.classList.toggle('text-gray-200', !isSelected);
+            tab.classList.toggle('hover:bg-gray-600', !isSelected);
+            if (panel) panel.classList.toggle('hidden', !isSelected);
+        });
+        if (activeTabId === 'monitoring-tab-btn') renderMonitoringData();
+    }
+    </script>
+</body>
+</html>
